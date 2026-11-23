@@ -16,7 +16,7 @@ jobs:
     name: Sin archivos de juego en el repositorio
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Comprobar que solo hay enlaces
         run: |
           if git ls-files | grep -Ei '\.(gb|gbc|gba|nds|zip|7z|rar|bin|rom|sav)$'; then
@@ -29,8 +29,8 @@ jobs:
     name: Abrir cada enlace de datos/juegos.json
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
       - name: Abrir los enlaces
@@ -50,6 +50,9 @@ jobs:
           else
             gh issue create --title "Enlaces que no responden ($(date -u +%Y-%m-%d))" --label enlaces --body-file "$RUNNER_TEMP/informe.md"
           fi
+      - name: Enlaces sin comprobar
+        if: steps.comprobar.outputs.sin_comprobar != '0'
+        run: echo "::warning::${{ steps.comprobar.outputs.sin_comprobar }} enlaces sin comprobar: el sitio ha limitado las peticiones (429). Se vuelven a probar en la siguiente comprobación."
       - name: Resultado
         if: steps.comprobar.outputs.rotos != '0'
         run: |
