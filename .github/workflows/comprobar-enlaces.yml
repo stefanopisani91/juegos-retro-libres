@@ -52,7 +52,8 @@ jobs:
           fi
       - name: Enlaces sin comprobar
         if: steps.comprobar.outputs.sin_comprobar != '0'
-        run: echo "::warning::${{ steps.comprobar.outputs.sin_comprobar }} enlaces sin comprobar: el sitio ha limitado las peticiones (429). Se vuelven a probar en la siguiente comprobación."
+        run: |
+          echo "::warning::${{ steps.comprobar.outputs.sin_comprobar }} enlaces sin comprobar (el sitio ha limitado las peticiones, 429). Se vuelven a probar en la siguiente comprobación."
       - name: Resultado
         if: steps.comprobar.outputs.rotos != '0'
         run: |
