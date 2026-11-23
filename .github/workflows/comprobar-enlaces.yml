@@ -1,0 +1,57 @@
+name: Comprobar enlaces
+
+# Una vez al mes abre cada enlace de datos/juegos.json. Si alguno no responde, abre una incidencia con la lista
+# (o añade un comentario a la incidencia que ya esté abierta). Nunca modifica la lista.
+on:
+  schedule:
+    - cron: '0 7 1 * *' # día 1 de cada mes, 07:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  sin-archivos-de-juego:
+    name: Sin archivos de juego en el repositorio
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Comprobar que solo hay enlaces
+        run: |
+          if git ls-files | grep -Ei '\.(gb|gbc|gba|nds|zip|7z|rar|bin|rom|sav)$'; then
+            echo "::error::La lista solo enlaza a los juegos: no se admiten archivos de juego en el repositorio."
+            exit 1
+          fi
+          echo "Ningún archivo de juego en el repositorio: correcto."
+
+  enlaces:
+    name: Abrir cada enlace de datos/juegos.json
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Abrir los enlaces
+        id: comprobar
+        run: node scripts/comprobar-enlaces.mjs datos/juegos.json "$RUNNER_TEMP/informe.md"
+      - name: Abrir o actualizar la incidencia
+        if: steps.comprobar.outputs.rotos != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh label create enlaces --color D93F0B --description "Enlaces que no responden" --force
+          abierta=$(gh issue list --label enlaces --state open --json number --jq '.[0].number // empty')
+          if [ -n "$abierta" ]; then
+            gh issue comment "$abierta" --body-file "$RUNNER_TEMP/informe.md"
+            echo "Comentario añadido a la incidencia #$abierta."
+          else
+            gh issue create --title "Enlaces que no responden ($(date -u +%Y-%m-%d))" --label enlaces --body-file "$RUNNER_TEMP/informe.md"
+          fi
+      - name: Resultado
+        if: steps.comprobar.outputs.rotos != '0'
+        run: |
+          echo "::error::${{ steps.comprobar.outputs.rotos }} de ${{ steps.comprobar.outputs.total }} enlaces no responden. Hay una incidencia con la lista."
+          exit 1
